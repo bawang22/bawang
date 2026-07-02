@@ -73,6 +73,7 @@ interface DataContextType {
   saveScript: (script: SavedScript) => void;
   removeScript: (id: string) => void;
   updateScriptProduct: (id: string, product: string) => void;
+  updateScriptTags: (id: string, tags: string[]) => void;
   refreshScripts: () => Promise<void>;
   isLoaded: boolean;
 }
@@ -215,6 +216,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }).then(() => refreshScripts()).catch(() => {});
   };
 
+  const updateScriptTags = (id: string, tags: string[]) => {
+    const target = scriptLibrary.find(item => item.id === id);
+    if (!target) return;
+    const updated = {
+      ...target,
+      tags
+    };
+    setScriptLibrary(prev => prev.map(item => item.id === id ? updated : item));
+    fetch('/api/scripts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    }).then(() => refreshScripts()).catch(() => {});
+  };
+
   const addToTopicPool = (item: PoolItem) => {
     if (!topicPool.find((t) => t.id === item.id)) {
       setTopicPool([...topicPool, item]);
@@ -226,7 +242,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DataContext.Provider value={{ trends, productBriefs, campaignResults, scriptLibrary, topicPool, addToTopicPool, removeFromTopicPool, loadExcel, loadCampaignResults, saveScript, removeScript, updateScriptProduct, refreshScripts, isLoaded }}>
+    <DataContext.Provider value={{ trends, productBriefs, campaignResults, scriptLibrary, topicPool, addToTopicPool, removeFromTopicPool, loadExcel, loadCampaignResults, saveScript, removeScript, updateScriptProduct, updateScriptTags, refreshScripts, isLoaded }}>
       {children}
     </DataContext.Provider>
   );

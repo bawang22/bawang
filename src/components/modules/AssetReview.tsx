@@ -19,7 +19,7 @@ function firstLine(content: string) {
 }
 
 export function AssetReview() {
-  const { scriptLibrary, removeScript, saveScript, updateScriptProduct } = useData();
+  const { scriptLibrary, removeScript, saveScript, updateScriptProduct, updateScriptTags } = useData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [keyword, setKeyword] = useState('');
   const [productFilter, setProductFilter] = useState(ALL);
@@ -144,7 +144,18 @@ export function AssetReview() {
                   <X className="w-3 h-3 hidden group-hover:block" />
                 </button>
               )}
-              {script.tags.map(tag => <span key={tag} className="bg-[#F0C020] border-2 border-[#121212] px-2 py-1 text-xs font-black">{tag}</span>)}
+              {script.tags.map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => updateScriptTags(script.id, script.tags.filter(item => item !== tag))}
+                  className="group inline-flex items-center gap-1 bg-[#F0C020] border-2 border-[#121212] px-2 py-1 text-xs font-black"
+                  title="点击删除标签"
+                >
+                  {tag}
+                  <X className="w-3 h-3 hidden group-hover:block" />
+                </button>
+              ))}
             </div>
             <div className="mb-4">
               <span className="text-xs font-bold text-gray-500 uppercase block mb-1">商品标注</span>
