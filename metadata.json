@@ -1,0 +1,6 @@
+{
+  "name": "ContentOps",
+  "description": "A Bauhaus styled dashboard for trend tracking, topic generation, competitor analysis, and asset review.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
