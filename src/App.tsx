@@ -38,9 +38,17 @@ const TABS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('script');
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = window.localStorage.getItem('contentops-active-tab');
+    return TABS.some(tab => tab.id === savedTab) ? savedTab : 'script';
+  });
   const activeTabData = TABS.find(t => t.id === activeTab) || TABS[0];
   const ActiveComponent = activeTabData.comp;
+
+  const changeTab = (tabId: string) => {
+    setActiveTab(tabId);
+    window.localStorage.setItem('contentops-active-tab', tabId);
+  };
 
   return (
     <div className="min-h-screen bg-[#F0F0F0] flex flex-col font-sans text-[#121212] border-[8px] md:border-[12px] border-[#121212] selection:bg-[#F0C020] selection:text-[#121212]">
@@ -50,7 +58,7 @@ export default function App() {
           {TABS.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => changeTab(tab.id)}
               className={`whitespace-nowrap transition-colors hover:text-[#1040C0] focus:outline-none py-2 px-1 ${
                 activeTab === tab.id
                   ? 'text-[#121212] underline decoration-4 md:decoration-8 underline-offset-[12px] decoration-[#D02020]'
