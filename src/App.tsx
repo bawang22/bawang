@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { CompetitorAnalysis } from './components/modules/CompetitorAnalysis';
 import { AssetReview } from './components/modules/AssetReview';
+import { ArrowUp } from 'lucide-react';
 
 function GeometricLogo() {
   return (
@@ -38,6 +39,7 @@ const TABS = [
 ];
 
 export default function App() {
+  const mainRef = React.useRef<HTMLElement>(null);
   const [activeTab, setActiveTab] = useState(() => {
     const savedTab = window.localStorage.getItem('contentops-active-tab');
     return TABS.some(tab => tab.id === savedTab) ? savedTab : 'script';
@@ -48,6 +50,11 @@ export default function App() {
   const changeTab = (tabId: string) => {
     setActiveTab(tabId);
     window.localStorage.setItem('contentops-active-tab', tabId);
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToTop = () => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -80,11 +87,20 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 w-full overflow-y-auto relative antialiased p-6 md:p-12">
+      <main ref={mainRef} className="flex-1 w-full overflow-y-auto relative antialiased p-6 md:p-12">
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(#121212_2px,transparent_2px)] [background-size:24px_24px] z-0 mix-blend-multiply"></div>
         <div className="relative z-10 max-w-7xl mx-auto">
           <ActiveComponent />
         </div>
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed right-6 bottom-24 z-50 flex h-14 w-14 items-center justify-center border-4 border-[#121212] bg-[#F0C020] text-[#121212] shadow-[6px_6px_0px_0px_#121212] transition-transform hover:-translate-y-1 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          aria-label="回到顶部"
+          title="回到顶部"
+        >
+          <ArrowUp className="h-7 w-7 stroke-[3]" />
+        </button>
       </main>
 
       <footer className="h-16 bg-[#121212] text-white flex items-center justify-between px-4 md:px-10 text-[8px] md:text-[10px] font-bold uppercase tracking-[0.1em] md:tracking-[0.2em] shrink-0">
