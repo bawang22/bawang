@@ -6,7 +6,6 @@ import { Button } from '../ui/Button';
 import { useData, SavedScript } from '../../store/DataContext';
 
 const ALL = '全部';
-const PRODUCT_OPTIONS = [ALL, '炫图AI', 'leeewow'];
 
 function guessProduct(fileName: string, content: string) {
   const text = `${fileName} ${content}`.toLowerCase();
@@ -27,6 +26,12 @@ export function AssetReview() {
   const [copyStatus, setCopyStatus] = useState('');
   const [importStatus, setImportStatus] = useState('');
   const [openScriptId, setOpenScriptId] = useState('');
+  const [productDrafts, setProductDrafts] = useState<Record<string, string>>({});
+
+  const productOptions = useMemo(() => {
+    const products = scriptLibrary.map(item => item.product).filter(Boolean);
+    return [ALL, ...Array.from(new Set(products))];
+  }, [scriptLibrary]);
 
   const filteredScripts = useMemo(() => {
     const q = keyword.trim().toLowerCase();
@@ -59,7 +64,7 @@ export function AssetReview() {
         product,
         hook: firstLine(content),
         cta: '待提炼',
-        tags: ['历史脚本', product],
+        tags: ['历史脚本'],
         createdAt: new Date().toLocaleString(),
         content
       });
@@ -111,7 +116,7 @@ export function AssetReview() {
               <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="搜标题、产品、Hook、标签、脚本内容" className="w-full pl-10 p-3 bg-[#F0F0F0] border-2 border-[#121212] font-bold outline-none focus:bg-white" />
             </div>
           </label>
-          <SelectBox label="产品" value={productFilter} options={PRODUCT_OPTIONS} onChange={setProductFilter} />
+          <SelectBox label="产品" value={productFilter} options={productOptions} onChange={setProductFilter} />
         </div>
       </Card>
 
@@ -132,17 +137,24 @@ export function AssetReview() {
             </div>
             <div className="mb-4">
               <span className="text-xs font-bold text-gray-500 uppercase block mb-1">产品标注</span>
-              <div className="grid grid-cols-2 gap-2">
-                {['炫图AI', 'leeewow'].map(product => (
-                  <button
-                    key={product}
-                    type="button"
-                    onClick={() => updateScriptProduct(script.id, product)}
-                    className={`border-2 border-[#121212] px-3 py-2 font-black text-sm ${script.product === product ? 'bg-[#121212] text-white' : 'bg-white text-[#121212]'}`}
-                  >
-                    {product}
-                  </button>
-                ))}
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <input
+                  value={productDrafts[script.id] ?? script.product ?? ''}
+                  onChange={e => setProductDrafts(prev => ({ ...prev, [script.id]: e.target.value }))}
+                  placeholder="输入产品名，例如：炫图AI"
+                  className="w-full p-3 bg-[#F0F0F0] border-2 border-[#121212] font-bold outline-none focus:bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextProduct = (productDrafts[script.id] ?? script.product ?? '').trim() || '未标注产品';
+                    updateScriptProduct(script.id, nextProduct);
+                    setProductDrafts(prev => ({ ...prev, [script.id]: nextProduct }));
+                  }}
+                  className="border-2 border-[#121212] bg-[#F0C020] px-4 py-2 font-black text-sm"
+                >
+                  确认
+                </button>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">

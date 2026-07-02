@@ -202,10 +202,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const updateScriptProduct = (id: string, product: string) => {
     const target = scriptLibrary.find(item => item.id === id);
     if (!target) return;
+    const normalizedProduct = product.trim() || '未标注产品';
     const updated = {
       ...target,
-      product,
-      tags: Array.from(new Set([...(target.tags || []).filter(tag => tag !== '炫图AI' && tag !== 'leeewow'), product]))
+      product: normalizedProduct
     };
     setScriptLibrary(prev => prev.map(item => item.id === id ? updated : item));
     fetch('/api/scripts', {
@@ -239,6 +239,7 @@ export function useData() {
   }
   return context;
 }
+
 
 
 
