@@ -44,6 +44,7 @@ export interface SavedScript {
   tags: string[];
   createdAt: string;
   content: string;
+  fileName?: string;
 }
 
 export interface PoolItem {
@@ -71,6 +72,8 @@ interface DataContextType {
   loadCampaignResults: (rows: CampaignResult[]) => void;
   saveScript: (script: SavedScript) => void;
   removeScript: (id: string) => void;
+  updateScriptProduct: (id: string, product: string) => void;
+  refreshScripts: () => Promise<void>;
   isLoaded: boolean;
 }
 
@@ -180,10 +183,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const saveScript = (script: SavedScript) => {
     setScriptLibrary(prev => [script, ...prev.filter(item => item.id !== script.id)]);
+    fetch('/api/scripts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(script)
+    }).then(() => refreshScripts()).catch(() => {});
   };
 
   const removeScript = (id: string) => {
+    const target = scriptLibrary.find(item => item.id === id);
     setScriptLibrary(prev => prev.filter(item => item.id !== id));
+    const fileName = target?.fileName || id;
+    fetch(`/api/scripts/${encodeURIComponent(fileName)}`, { method: 'DELETE' })
+      .then(() => refreshScripts())
+      .catch(() => {});
+  };
+
+  const updateScriptProduct = (id: string, product: string) => {
+    const target = scriptLibrary.find(item => item.id === id);
+    if (!target) return;
+    const updated = {
+      ...target,
+      product,
+      tags: Array.from(new Set([...(target.tags || []).filter(tag => tag !== '炫图AI' && tag !== 'leeewow'), product]))
+    };
+    setScriptLibrary(prev => prev.map(item => item.id === id ? updated : item));
+    fetch('/api/scripts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    }).then(() => refreshScripts()).catch(() => {});
   };
 
   const addToTopicPool = (item: PoolItem) => {
@@ -197,7 +226,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DataContext.Provider value={{ trends, productBriefs, campaignResults, scriptLibrary, topicPool, addToTopicPool, removeFromTopicPool, loadExcel, loadCampaignResults, saveScript, removeScript, refreshScripts, isLoaded }}>
+    <DataContext.Provider value={{ trends, productBriefs, campaignResults, scriptLibrary, topicPool, addToTopicPool, removeFromTopicPool, loadExcel, loadCampaignResults, saveScript, removeScript, updateScriptProduct, refreshScripts, isLoaded }}>
       {children}
     </DataContext.Provider>
   );

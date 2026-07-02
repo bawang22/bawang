@@ -20,7 +20,7 @@ function firstLine(content: string) {
 }
 
 export function AssetReview() {
-  const { scriptLibrary, removeScript, saveScript } = useData();
+  const { scriptLibrary, removeScript, saveScript, updateScriptProduct } = useData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [keyword, setKeyword] = useState('');
   const [productFilter, setProductFilter] = useState(ALL);
@@ -129,6 +129,21 @@ export function AssetReview() {
             <pre className={`font-bold text-sm mb-4 whitespace-pre-wrap overflow-auto bg-[#F0F0F0] border-2 border-[#121212] p-3 ${openScriptId === script.id ? 'max-h-[720px]' : 'max-h-64'}`}>{script.content}</pre>
             <div className="flex flex-wrap gap-2 mb-4">
               {script.tags.map(tag => <span key={tag} className="bg-[#F0C020] border-2 border-[#121212] px-2 py-1 text-xs font-black">{tag}</span>)}
+            </div>
+            <div className="mb-4">
+              <span className="text-xs font-bold text-gray-500 uppercase block mb-1">产品标注</span>
+              <div className="grid grid-cols-2 gap-2">
+                {['炫图AI', 'leeewow'].map(product => (
+                  <button
+                    key={product}
+                    type="button"
+                    onClick={() => updateScriptProduct(script.id, product)}
+                    className={`border-2 border-[#121212] px-3 py-2 font-black text-sm ${script.product === product ? 'bg-[#121212] text-white' : 'bg-white text-[#121212]'}`}
+                  >
+                    {product}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button variant="primary" onClick={() => setOpenScriptId(openScriptId === script.id ? '' : script.id)} className="flex-1"><FileText className="w-5 h-5" /> {openScriptId === script.id ? '收起' : '打开'}</Button>
