@@ -129,6 +129,34 @@ const DEFAULT_RESULTS: CampaignResult[] = [
 
 const DEFAULT_SCRIPTS: SavedScript[] = [];
 const DataContext = createContext<DataContextType | undefined>(undefined);
+const SCRIPT_OVERRIDES_KEY = 'contentops-script-overrides';
+
+type ScriptOverride = {
+  product?: string;
+  tags?: string[];
+};
+
+function loadScriptOverrides(): Record<string, ScriptOverride> {
+  try {
+    return JSON.parse(window.localStorage.getItem(SCRIPT_OVERRIDES_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveScriptOverride(id: string, patch: ScriptOverride) {
+  const overrides = loadScriptOverrides();
+  overrides[id] = { ...(overrides[id] || {}), ...patch };
+  window.localStorage.setItem(SCRIPT_OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+function applyScriptOverrides(scripts: SavedScript[]) {
+  const overrides = loadScriptOverrides();
+  return scripts.map(script => ({
+    ...script,
+    ...(overrides[script.id] || {})
+  }));
+}
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [trends, setTrends] = useState<Trend[]>(DEFAULT_TRENDS);
@@ -142,7 +170,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const response = await fetch('/api/scripts');
     const payload = await response.json().catch(() => ({}));
     if (response.ok && Array.isArray(payload.scripts)) {
-      setScriptLibrary(payload.scripts);
+      setScriptLibrary(applyScriptOverrides(payload.scripts));
     }
   };
 
@@ -208,6 +236,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...target,
       product: normalizedProduct
     };
+    saveScriptOverride(id, { product: normalizedProduct });
     setScriptLibrary(prev => prev.map(item => item.id === id ? updated : item));
     fetch('/api/scripts', {
       method: 'POST',
@@ -223,6 +252,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...target,
       tags
     };
+    saveScriptOverride(id, { tags });
     setScriptLibrary(prev => prev.map(item => item.id === id ? updated : item));
     fetch('/api/scripts', {
       method: 'POST',
