@@ -172,23 +172,27 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className="w-full p-3 bg-[#F0F0F0] border-2 border-[#121212] font-bold outline-none focus:bg-white resize-none" />;
 }
-function downloadWordDocument(title: string, body: string) {
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/api/export-word';
-  form.target = '_blank';
-  form.style.display = 'none';
-  const titleInput = document.createElement('input');
-  titleInput.name = 'title';
-  titleInput.value = title || '导出文档';
-  const bodyInput = document.createElement('textarea');
-  bodyInput.name = 'body';
-  bodyInput.value = body || '';
-  form.appendChild(titleInput);
-  form.appendChild(bodyInput);
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
+async function saveWordToLibrary(payload: {
+  title: string;
+  body: string;
+  sourceType: string;
+  platform?: string;
+  product?: string;
+  hook?: string;
+  cta?: string;
+  tags?: string[];
+}) {
+  const response = await fetch('/api/export-word-to-library', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...payload,
+      createdAt: new Date().toLocaleString()
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || '保存 Word 失败');
+  return result;
 }
 
 function buildAnalysisDocument(mode: Mode, analysis: AnalysisResult) {
@@ -202,7 +206,7 @@ function buildAnalysisDocument(mode: Mode, analysis: AnalysisResult) {
   return `${summary}\n\n时间轴拆解：\n${timeline}\n\n内容结构：\n${(analysis.content_structure || []).join('\n')}\n\n可迁移点：\n${(analysis.direct_transfer || []).join('\n')}\n\n不建议迁移：\n${(analysis.no_transfer || []).join('\n')}`;
 }
 export function CompetitorAnalysis() {
-  const { saveScript } = useData();
+  const { saveScript, refreshScripts } = useData();
   const [mode, setMode] = useState<Mode>('competitor');
   
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -218,6 +222,7 @@ export function CompetitorAnalysis() {
   const [generatingTrendIdeaId, setGeneratingTrendIdeaId] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState('');
   const [analysisErrorCode, setAnalysisErrorCode] = useState('');
+  const [exportStatus, setExportStatus] = useState('');
 
   const dimensions = mode === 'competitor' ? COMPETITOR_DIMENSIONS : TREND_DIMENSIONS;
   const sourceLabel = mode === 'competitor' ? '竞品内容' : '热点事件内容';
@@ -238,6 +243,7 @@ export function CompetitorAnalysis() {
     setTrendIdeas([]);
     setAnalysisError('');
     setAnalysisErrorCode('');
+    setExportStatus('');
     try {
       const meta = {
         mode: mode === 'competitor' ? '竞品脚本拆解' : '热点事件解析',
@@ -334,10 +340,27 @@ export function CompetitorAnalysis() {
     }
   };
 
-  const exportWord = () => {
+  const exportWord = async () => {
     if (!script) return;
     const title = asText(script.our_title, '我方创作脚本');
-    downloadWordDocument(title, buildScriptDocument(script));
+    const product = mode === 'competitor' ? ourProduct.name : trendInfo.product_name;
+    const platform = mode === 'trend' ? trendInfo.platform : '未标注平台';
+    try {
+      await saveWordToLibrary({
+        title,
+        body: buildScriptDocument(script),
+        sourceType: mode === 'competitor' ? '竞品脚本拆解' : '热点事件解析',
+        platform,
+        product: product || '未标注产品',
+        hook: asText(script.our_hook, '暂无'),
+        cta: asText(script.our_cta, '暂无'),
+        tags: [mode === 'competitor' ? '竞品迁移' : '热点迁移', '最终脚本', platform, product].filter(Boolean)
+      });
+      await refreshScripts();
+      setExportStatus('已保存 Word 到脚本文件夹，并同步到脚本库。');
+    } catch (err: any) {
+      setAnalysisError(err?.message || '保存 Word 失败');
+    }
   };
 
   const saveCurrentScript = () => {
@@ -358,10 +381,25 @@ export function CompetitorAnalysis() {
     });
   };
 
-  const exportAnalysisWord = () => {
+  const exportAnalysisWord = async () => {
     if (!analysis) return;
     const title = mode === 'competitor' ? '竞品拆解结果' : '热点拆解结果';
-    downloadWordDocument(title, buildAnalysisDocument(mode, analysis));
+    try {
+      await saveWordToLibrary({
+        title,
+        body: buildAnalysisDocument(mode, analysis),
+        sourceType: mode === 'competitor' ? '竞品脚本拆解' : '热点事件解析',
+        platform: mode === 'trend' ? trendInfo.platform : '未标注平台',
+        product: mode === 'trend' ? trendInfo.product_name || '未标注产品' : ourProduct.name || '未标注产品',
+        hook: mode === 'competitor' ? asText(analysis.competitor_hook, '暂无') : asText(analysis.trend_summary, '暂无'),
+        cta: asText(analysis.competitor_cta || analysis.recommended_angle, '暂无'),
+        tags: [mode === 'competitor' ? '竞品拆解' : '热点解析', '拆解结果', mode === 'trend' ? trendInfo.platform : '未标注平台'].filter(Boolean)
+      });
+      await refreshScripts();
+      setExportStatus('已保存 Word 到脚本文件夹，并同步到脚本库。');
+    } catch (err: any) {
+      setAnalysisError(err?.message || '保存 Word 失败');
+    }
   };
 
   const toggleDim = (dim: string) => setSelectedDims(prev => prev.includes(dim) ? prev.filter(d => d !== dim) : [...prev, dim]);
@@ -379,7 +417,7 @@ export function CompetitorAnalysis() {
       <Card decoration="square" decorationColor="blue" className="bg-white">
         <h2 className="text-2xl font-black border-b-4 border-[#121212] pb-4 mb-6">1. 导入并{mode === 'competitor' ? '拆解' : '解析'}{sourceLabel}</h2>
         <UploadBox videoFile={videoFile} setVideoFile={setVideoFile} sourceLabel={sourceLabel} />
-        <div className="mt-6 pt-6 border-t-4 border-[#121212]"><Button variant="primary" onClick={handleAnalyze} disabled={isAnalyzing || !videoFile} className="w-full md:w-auto px-8 py-4 text-xl">{isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : <Crosshair className="w-6 h-6 mr-2" />}开始拆解</Button>{analysisError && <div className="mt-4 bg-[#D02020] text-white border-4 border-[#121212] p-4 font-black"><p>{analysisError}</p></div>}</div>
+        <div className="mt-6 pt-6 border-t-4 border-[#121212]"><Button variant="primary" onClick={handleAnalyze} disabled={isAnalyzing || !videoFile} className="w-full md:w-auto px-8 py-4 text-xl">{isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : <Crosshair className="w-6 h-6 mr-2" />}开始拆解</Button>{analysisError && <div className="mt-4 bg-[#D02020] text-white border-4 border-[#121212] p-4 font-black"><p>{analysisError}</p></div>}{exportStatus && <div className="mt-4 bg-[#F0C020] text-[#121212] border-4 border-[#121212] p-4 font-black"><p>{exportStatus}</p></div>}</div>
       </Card>
 
       {analysis && <AnalysisPanel mode={mode} analysis={analysis} onExport={exportAnalysisWord} />}

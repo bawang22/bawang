@@ -528,12 +528,24 @@ async function startServer() {
   const scriptsDir = path.join(process.cwd(), "脚本");
 
   function safeScriptFileName(title: string) {
+    return `${safeScriptBaseName(title)}.md`;
+  }
+
+  function safeScriptBaseName(title: string) {
     const cleaned = String(title || "未命名脚本")
       .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 80);
-    return `${cleaned || "未命名脚本"}.md`;
+    return cleaned || "未命名脚本";
+  }
+
+  function exportStamp() {
+    return new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+  }
+
+  function wordHtml(title: string, body: string) {
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:Arial,'Microsoft YaHei',sans-serif;line-height:1.8;color:#111}h1{font-size:24px;border-bottom:2px solid #111;padding-bottom:8px}pre{white-space:pre-wrap;font-family:inherit}</style></head><body><h1>${escapeHtml(title)}</h1><pre>${escapeHtml(body)}</pre></body></html>`;
   }
 
   function parseScriptFile(content: string, fileName: string) {
@@ -612,6 +624,36 @@ async function startServer() {
       res.json({ ok: true, fileName });
     } catch (e: any) {
       res.status(500).json({ error: e.message || "保存脚本失败" });
+    }
+  });
+
+  app.post("/api/export-word-to-library", async (req, res) => {
+    try {
+      await fs.mkdir(scriptsDir, { recursive: true });
+      const payload = req.body || {};
+      const title = String(payload.title || "导出文档");
+      const body = String(payload.body || "");
+      const baseName = `${safeScriptBaseName(title)}-${exportStamp()}`;
+      const docFileName = `${baseName}.doc`;
+      const mdFileName = `${baseName}.md`;
+      const mdBody = [
+        `标题：${title}`,
+        `来源：${payload.sourceType || "手动沉淀"}`,
+        `平台：${payload.platform || "未标注平台"}`,
+        `产品：${payload.product || "未标注产品"}`,
+        `Hook：${payload.hook || "待提炼"}`,
+        `CTA：${payload.cta || "待提炼"}`,
+        `标签：${Array.isArray(payload.tags) ? payload.tags.join("、") : "导出Word"}`,
+        `保存时间：${payload.createdAt || new Date().toLocaleString()}`,
+        `Word文件：${docFileName}`,
+        "",
+        body
+      ].join("\n");
+      await fs.writeFile(path.join(scriptsDir, docFileName), `\ufeff${wordHtml(title, body)}`, "utf8");
+      await fs.writeFile(path.join(scriptsDir, mdFileName), mdBody, "utf8");
+      res.json({ ok: true, docFileName, mdFileName });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "保存 Word 到脚本库失败" });
     }
   });
 
