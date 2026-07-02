@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useRef, useState } from 'react';
-import { Copy, FileText, Search, Trash2, Upload } from 'lucide-react';
+import { Copy, FileText, Search, Trash2, Upload, X } from 'lucide-react';
 import mammoth from 'mammoth';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -27,9 +27,10 @@ export function AssetReview() {
   const [importStatus, setImportStatus] = useState('');
   const [openScriptId, setOpenScriptId] = useState('');
   const [productDrafts, setProductDrafts] = useState<Record<string, string>>({});
+  const [editingProductId, setEditingProductId] = useState('');
 
   const productOptions = useMemo(() => {
-    const products = scriptLibrary.map(item => item.product).filter(Boolean);
+    const products = scriptLibrary.map(item => item.product).filter(product => product && product !== '未标注产品');
     return [ALL, ...Array.from(new Set(products))];
   }, [scriptLibrary]);
 
@@ -125,7 +126,6 @@ export function AssetReview() {
           <div key={script.id} className="bg-white border-4 border-[#121212] p-5 shadow-[8px_8px_0px_0px_#121212]">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <p className="text-xs font-black text-gray-500 mb-1">{script.product}</p>
                 <h3 className="text-2xl font-black leading-tight">{script.title}</h3>
               </div>
               <FileText className="w-8 h-8 text-[#1040C0] shrink-0" />
@@ -133,29 +133,54 @@ export function AssetReview() {
             <p className="font-black text-[#D02020] mb-3">Hook：{script.hook || '暂无'}</p>
             <pre className={`font-bold text-sm mb-4 whitespace-pre-wrap overflow-auto bg-[#F0F0F0] border-2 border-[#121212] p-3 ${openScriptId === script.id ? 'max-h-[720px]' : 'max-h-64'}`}>{script.content}</pre>
             <div className="flex flex-wrap gap-2 mb-4">
+              {script.product && script.product !== '未标注产品' && (
+                <button
+                  type="button"
+                  onClick={() => updateScriptProduct(script.id, '')}
+                  className="group inline-flex items-center gap-1 bg-[#F0C020] border-2 border-[#121212] px-2 py-1 text-xs font-black"
+                  title="点击删除产品标注"
+                >
+                  {script.product}
+                  <X className="w-3 h-3 hidden group-hover:block" />
+                </button>
+              )}
               {script.tags.map(tag => <span key={tag} className="bg-[#F0C020] border-2 border-[#121212] px-2 py-1 text-xs font-black">{tag}</span>)}
             </div>
             <div className="mb-4">
-              <span className="text-xs font-bold text-gray-500 uppercase block mb-1">产品标注</span>
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <input
-                  value={productDrafts[script.id] ?? script.product ?? ''}
-                  onChange={e => setProductDrafts(prev => ({ ...prev, [script.id]: e.target.value }))}
-                  placeholder="输入产品名，例如：炫图AI"
-                  className="w-full p-3 bg-[#F0F0F0] border-2 border-[#121212] font-bold outline-none focus:bg-white"
-                />
+              <span className="text-xs font-bold text-gray-500 uppercase block mb-1">商品标注</span>
+              {editingProductId === script.id || !script.product || script.product === '未标注产品' ? (
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <input
+                    value={productDrafts[script.id] ?? (script.product === '未标注产品' ? '' : script.product) ?? ''}
+                    onChange={e => setProductDrafts(prev => ({ ...prev, [script.id]: e.target.value }))}
+                    placeholder="输入商品/产品名，例如：炫图"
+                    className="w-full p-3 bg-[#F0F0F0] border-2 border-[#121212] font-bold outline-none focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextProduct = (productDrafts[script.id] ?? script.product ?? '').trim();
+                      updateScriptProduct(script.id, nextProduct);
+                      setProductDrafts(prev => ({ ...prev, [script.id]: nextProduct }));
+                      setEditingProductId('');
+                    }}
+                    className="border-2 border-[#121212] bg-[#F0C020] px-4 py-2 font-black text-sm"
+                  >
+                    确认
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
                   onClick={() => {
-                    const nextProduct = (productDrafts[script.id] ?? script.product ?? '').trim() || '未标注产品';
-                    updateScriptProduct(script.id, nextProduct);
-                    setProductDrafts(prev => ({ ...prev, [script.id]: nextProduct }));
+                    setProductDrafts(prev => ({ ...prev, [script.id]: script.product }));
+                    setEditingProductId(script.id);
                   }}
-                  className="border-2 border-[#121212] bg-[#F0C020] px-4 py-2 font-black text-sm"
+                  className="w-full text-left p-3 bg-[#F0F0F0] border-2 border-[#121212] font-bold"
                 >
-                  确认
+                  {script.product}
                 </button>
-              </div>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button variant="primary" onClick={() => setOpenScriptId(openScriptId === script.id ? '' : script.id)} className="flex-1"><FileText className="w-5 h-5" /> {openScriptId === script.id ? '收起' : '打开'}</Button>
